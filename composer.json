@@ -1,0 +1,26 @@
+{
+    "name": "draku/modules",
+    "description": "A package that allows you to split functionality into modules in a Laravel application without having to write service providers and additional configuration.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Draku",
+            "email": "vladimir.ibazeta@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.1.2",
+        "illuminate/view": "5.4.*",
+        "illuminate/routing": "5.4.*",
+        "illuminate/support": "5.4.*",
+        "illuminate/contracts": "5.4.*",
+        "illuminate/filesystem": "5.4.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Draku\\Modules": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+}
