@@ -19,7 +19,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Draku\\Modules": "src/"
+            "Draku\\Modules\\": "src/"
         }
     },
     "minimum-stability": "dev"
