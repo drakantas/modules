@@ -1,5 +1,5 @@
 <?php
-namespace Archivum\Modules\Loader;
+namespace Draku\Modules\Loader;
 
 use Illuminate\Filesystem\Filesystem;
 use Draku\Modules\Exceptions\ManifestNotFound;
