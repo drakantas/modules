@@ -5,31 +5,17 @@ use Illuminate\View\Factory as View;
 use Illuminate\Routing\Router;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Contracts\Foundation\Application;
-use Draku\Modules\Loader\Explorer;
+use Draku\Modules\Explorer\Explorer;
 use Draku\Modules\Exceptions\DirectoryHandlerNotFound;
 
 class Loader
 {
     /**
-     * Application instance
+     * Modules path
      *
-     * @var Illuminate\Contracts\Foundation\Application
+     * @var string
      */
-    protected $app;
-
-    /**
-     * Filesystem instance
-     *
-     * @var Illuminate\Filesystem\Filesystem
-     */
-    protected $files;
-
-    /**
-     * Modules explorer instance
-     *
-     * @var Draku\Modules\Loader\Explorer
-     */
-    protected $explorer;
+    protected $path;
 
     /**
      * Namespace to locate the modules in this application
@@ -43,12 +29,28 @@ class Loader
      *
      * @var array
      */
-    protected $directories = [
-        'views' => 'Views',
-        'routes' => 'Routes',
-        'entities' => 'Entities',
-        'controllers' => 'Controllers'
-    ];
+    protected $dirStructure = [];
+
+    /**
+     * Enable class map caching
+     *
+     * @var boolean
+     */
+    protected $cache;
+
+    /**
+     * Cache file with mapped classes
+     *
+     * @var string
+     */
+    protected $cacheFile;
+
+    /**
+     * Manifest file
+     *
+     * @var string
+     */
+    protected $manifestFile;
 
     /**
      * Regex that catches the file name and ignores the extension
@@ -60,53 +62,80 @@ class Loader
      *
      * @var string
      */
-    protected $verifier = '%^([A-Z][a-zA-Z\d]+)\.(?:php|hv)$%';
+    protected $verifier = '%^([A-Z][a-zA-Z\d]+)\.(?:php|hh)$%';
+
+    /**
+     * Cache path
+     *
+     * @var string
+     */
+    protected $cachePath;
+
+    /**
+     * View factory instance
+     *
+     * @var \Illuminate\View\Factory
+     */
+    protected $view;
+    /**
+     * Filesystem instance
+     *
+     * @var \Illuminate\Filesystem\Filesystem
+     */
+    protected $files;
 
     /**
      * Router instance
      *
-     * @var Illuminate\Routing\Router
+     * @var \Illuminate\Routing\Router
      */
     protected $router;
+
+    /**
+     * Modules explorer instance
+     *
+     * @var \Draku\Modules\Loader\Explorer
+     */
+    protected $explorer;
 
     /**
      * Files map
      *
      * @var array
      */
-    protected $fileMap = [];
+    protected $filesMap = [];
 
     /**
-     * Enable class map caching
-     *
-     * @var boolean
+     * Classes map
      */
-    protected $cache = false;
-
-    /**
-     * Cache file with mapped classes
-     *
-     * @var string
-     */
-    protected $cacheFile = 'modules.php';
+    protected $classMap = [];
 
     /**
      * Create a Loader instance
      *
+     * @param array $config
+     * @param \Illuminate\View\Factory $view
+     * @param \Illuminate\Routing\Router $router
+     * @param \Illuminate\Filesystem\Filesystem $files
+     * @param \Draku\Modules\Loader\Explorer $explorer
+     *
      * @return void
      */
     public function __construct(
-        Application $app,
-        Filesystem $files,
+        array $config,
+        View $view,
         Router $router,
-        View $view
+        Filesystem $files,
+        Explorer $explorer,
+        $cachePath = '',
     ) {
-        $this->app  = $app;
         $this->view = $view;
         $this->files = $files;
         $this->router = $router;
-        
-        $this->setExplorer($app->modulesPath(), $files);
+        $this->explorer = $explorer;
+        $this->cachePath = $cachePath;
+
+        $this->setConfig($config);
     }
 
     /**
@@ -117,15 +146,13 @@ class Loader
     public function mapModuleFiles()
     {
         if($this->cache) {
-            $this->fileMap = $this->existsMappedClassesFile();
+            $this->filesMap = $this->existsMappedClassesFile();
         }
-        else if(!$this->cache || !$this->fileMap) {
-            $this->fileMap = $this->explorer->getModulesFiles($this->directories);
+        else if(!$this->cache || !$this->filesMap) {
+            $this->filesMap = $this->explorer->getModulesFiles($this->dirStructure);
         }
 
-        $classMap = [];
-
-        foreach($this->fileMap as $moduleName => $moduleDirectories) {
+        foreach($this->filesMap as $moduleName => $moduleDirectories) {
             foreach($moduleDirectories as $dirName => $files) {
                 $this->handleFiles($moduleName, $dirName, $files);
             }
@@ -133,15 +160,29 @@ class Loader
     }
 
     /**
-     * Sets the namespace for the directory where the modules are located
+     * Register the class loader
      *
      * @return void
      */
-    public function setNamespace($namespace)
+    public function registerLoader()
     {
-        if(!isset($this->namespace)) {
-            $this->namespace = $namespace;
+        spl_autoload_register([$this, 'loadClass'], true, true);
+    }
+
+    /**
+     * Load the provided class
+     *
+     * @param string $class
+     *
+     * @return bool
+     */
+    public function loadClass($class)
+    {
+        if(isset($this->classMap[$class])) {
+            includeFile($this->classMap[$class]);
+            return true;
         }
+        return false;
     }
 
     /**
@@ -155,16 +196,17 @@ class Loader
      */
     protected function handleControllers($module, $directory, $files)
     {
+        $classes = [];
+
         foreach($files as $file) {
             $buffer = [
                 $module,
                 $directory,
                 basename($file)
             ];
-            $this->app->getAutoloader()->addClassMap([
-                $this->formatNamespacedClass($buffer) => $this->formatFilePath($buffer)
-            ]);
+            array_push($classes, [$this->formatNamespacedClass($buffer) => $this->formatFilePath($buffer)]);
         }
+        array_push($this->classMap, $classes);
     }
 
     /**
@@ -197,7 +239,7 @@ class Loader
         $this->router->group([
             'namespace' => $this->formatNamespacedClass([
                 $module,
-                $this->directories['controllers']
+                $this->dirStructure['controllers']
             ])
         ], function(Router $router) use ($module, $directory, $files) {
             foreach($files as $file) {
@@ -244,7 +286,7 @@ class Loader
      */
     protected function handleFiles(&$moduleName, &$dirName, &$files)
     {
-        if(isset($this->directories[strtolower($dirName)])) {
+        if(isset($this->dirStructure[strtolower($dirName)])) {
             if(!method_exists($this, $dirHandler = 'handle'.$dirName)) {
                 throw new DirectoryHandlerNotFound("Method {$dirHandler}() couldn't be found.");
             }
@@ -261,7 +303,7 @@ class Loader
      */
     protected function formatFilePath($buffer)
     {
-        array_unshift($buffer, $this->app->modulesPath());
+        array_unshift($buffer, $this->path);
         return $this->formatBuffer($buffer, DIRECTORY_SEPARATOR);
     }
 
@@ -285,9 +327,14 @@ class Loader
      */
     protected function existsMappedClassesFile()
     {
-        $filePath = $this->app->bootstrapPath().DIRECTORY_SEPARATOR.
-                    'cache'.DIRECTORY_SEPARATOR.
-                    $this->cacheFile;
+        $filePath = '';
+        if($this->cachePath !== '') {
+            $filePath = $this->cachePath;
+        }
+        else {
+            $filePath = base_path('cache');
+        }
+        $filePath .= DIRECTORY_SEPARATOR.'cache'.DIRECTORY_SEPARATOR.$this->cacheFile;
         return $this->files->exists($filePath) ? include $filePath : $this->createCacheFile($filePath);
     }
 
@@ -335,17 +382,26 @@ class Loader
     }
 
     /**
-     * Set the explorer instance
+     * Sets the configuration variables
      *
-     * @param string $path
-     * @param Filesystem $fileManager
+     * @param array $config
      *
-     * @return Draku\Modules\Loader\Explorer
+     * @return void
      */
-    private function setExplorer($path, $fileManager)
+    private function setConfig(&$config)
     {
-        if(!isset($this->explorer)) {
-            $this->explorer = new Explorer($path, $fileManager);
+        foreach($config as $k => $v) {
+            $this->{$k} = $v;
         }
     }
+}
+
+/**
+ * Scope isolated include.
+ *
+ * @author Composer
+ */
+function includeFile($path)
+{
+    include $path;
 }

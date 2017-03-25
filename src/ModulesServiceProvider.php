@@ -4,7 +4,7 @@ namespace Draku\Modules;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Contracts\Container\Container;
 use Draku\Modules\Loader\Loader;
-use Draku\Modules\Loader\Explorer;
+use Draku\Modules\Explorer\Explorer;
 
 class ModulesServiceProvider extends ServiceProvider
 {
@@ -12,25 +12,37 @@ class ModulesServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerModulesLoader();
+        $this->registerModulesExplorer();
     }
 
     public function boot()
     {
         $this->publishConfig();
-        $this->app->make('modules.loader')->mapModuleFiles();
+        $loader = $this->app->make('modules.loader');
+        $loader->->mapModuleFiles();
+        $loader->registerLoader();
     }
 
     private function registerModulesLoader()
     {
         $this->app->singleton('modules.loader', function(Container $app) {
-            $loader = new Loader(
-                $app,
-                $app->make('files'),
-                $app->make('router'),
-                $app->make('view')
+            return new Loader(
+                $app['config']->get('modules'),
+                $app['files'],
+                $app['router'],
+                $app['view'],
+                $app->bootstrapPath()
             );
-            $loader->setNamespace(config('modules.namespace'));
-            return $loader;
+        });
+    }
+
+    private function registerModulesExplorer()
+    {
+        $this->app->singleton('modules.explorer', function(Container $app) {
+            return new Explorer(
+                $app['config']->get('modules'),
+                $app['files']
+            );
         });
     }
 

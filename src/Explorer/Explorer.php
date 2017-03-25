@@ -1,20 +1,46 @@
 <?php
-namespace Draku\Modules\Loader;
+namespace Draku\Modules\Explorer;
 
 use Illuminate\Filesystem\Filesystem;
 use Draku\Modules\Exceptions\ManifestNotFound;
 
 class Explorer
 {
-    protected $files;
-    protected $collection;
+    /**
+     * Modules path
+     *
+     * @var string
+     */
     protected $modulesPath;
-    protected $manifestFile = 'manifest.json';
 
-    public function __construct($modulesPath, Filesystem $files)
+    /**
+     * Manifest file
+     *
+     * @var string
+     */
+    protected $manifestFile;
+
+    /**
+     * Filesystem instance
+     *
+     * @var \Illuminate\Filesystem\Filesystem
+     */
+    protected $files;
+
+    /**
+     * Create an Explorer instance
+     *
+     * @param string $modulesPath
+     * @param string $manifestFile
+     * @param \Illuminate\Filesystem\Filesystem $files
+     *
+     * @return void
+     */
+    public function __construct(array $config, Filesystem $files)
     {
         $this->files = $files;
-        $this->modulesPath = $modulesPath;
+        $this->modulesPath = $config['path'];
+        $this->manifestFile = $config['manifestFile'];
     }
 
     /**

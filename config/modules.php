@@ -8,7 +8,7 @@ return [
     | This path defines where modules will be stored.
     |
     */
-    'path' => app_path('modules'),
+    'path' => base_path('modules'),
     /*
     |--------------------------------------------------------------------------
     | Cache
