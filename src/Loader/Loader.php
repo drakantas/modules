@@ -127,7 +127,7 @@ class Loader
         Router $router,
         Filesystem $files,
         Explorer $explorer,
-        $cachePath = '',
+        $cachePath = ''
     ) {
         $this->view = $view;
         $this->files = $files;
@@ -196,17 +196,14 @@ class Loader
      */
     protected function handleControllers($module, $directory, $files)
     {
-        $classes = [];
-
         foreach($files as $file) {
             $buffer = [
                 $module,
                 $directory,
                 basename($file)
             ];
-            array_push($classes, [$this->formatNamespacedClass($buffer) => $this->formatFilePath($buffer)]);
+            $this->classMap[$this->formatNamespacedClass($buffer)] = $this->formatFilePath($buffer);
         }
-        array_push($this->classMap, $classes);
     }
 
     /**

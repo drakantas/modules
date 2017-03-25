@@ -19,7 +19,7 @@ class ModulesServiceProvider extends ServiceProvider
     {
         $this->publishConfig();
         $loader = $this->app->make('modules.loader');
-        $loader->->mapModuleFiles();
+        $loader->mapModuleFiles();
         $loader->registerLoader();
     }
 
