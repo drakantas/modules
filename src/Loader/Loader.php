@@ -105,8 +105,7 @@ class Loader
         $this->view = $view;
         $this->files = $files;
         $this->router = $router;
-
-        $this->setNamespace();
+        
         $this->setExplorer($app->modulesPath(), $files);
     }
 
