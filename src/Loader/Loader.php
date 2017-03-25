@@ -53,7 +53,7 @@ class Loader
     /**
      * Regex that catches the file name and ignores the extension
      * - The file must begin with an uppercase letter.
-     * - Anything that comes afterward should be a letter from the alphabet or a digit.
+     * - Anything that comes afterward should be a letter or a digit.
      * - Only available file extensions are: .php and .hv
      * Example: MyClass123.php is OK
      *          But, myClass.php is NOT OK
@@ -77,17 +77,14 @@ class Loader
     protected $fileMap = [];
 
     /**
-     * Enable files paths caching
-     * If true it won't browse through each module directory looking for files that could be added
-     * to the filemap to be send to the composer autoloader for its load.
-     * Set to true only in production environments to increase performance.
+     * Enable class map caching
      *
      * @var boolean
      */
     protected $cache = false;
 
     /**
-     * Class map file with all of the modules' classes
+     * Cache file with mapped classes
      *
      * @var string
      */
@@ -98,8 +95,12 @@ class Loader
      *
      * @return void
      */
-    public function __construct(Application $app, Filesystem $files, Router $router, View $view)
-    {
+    public function __construct(
+        Application $app,
+        Filesystem $files,
+        Router $router,
+        View $view
+    ) {
         $this->app  = $app;
         $this->view = $view;
         $this->files = $files;
@@ -129,6 +130,18 @@ class Loader
             foreach($moduleDirectories as $dirName => $files) {
                 $this->handleFiles($moduleName, $dirName, $files);
             }
+        }
+    }
+
+    /**
+     * Sets the namespace for the directory where the modules are located
+     *
+     * @return void
+     */
+    public function setNamespace($namespace)
+    {
+        if(!isset($this->namespace)) {
+            $this->namespace = $namespace;
         }
     }
 
@@ -171,7 +184,8 @@ class Loader
     }
 
     /**
-     * Includes all of a module's route files and also sets the namespace for controllers to be located
+     * Includes all of a module's route files and also sets the namespace for
+     * controllers to be located
      *
      * @param string $module
      * @param string $directory
@@ -198,7 +212,8 @@ class Loader
     }
 
     /**
-     * Adds the module views directory to the hints array for the view to be located
+     * Adds the module views directory to the hints array for the view to be
+     * located
      *
      * @param string $module
      * @param string $directory
@@ -208,20 +223,25 @@ class Loader
      */
     protected function handleViews($module, $directory, $files)
     {
-        $this->view->addNamespace($this->formatNamespacedClass([$module]), $this->formatFilePath([
-            $module,
-            $directory
-        ]));
+        $this->view->addNamespace(
+            $this->formatNamespacedClass([$module]), $this->formatFilePath([
+                $module,
+                $directory
+            ])
+        );
     }
 
     /**
-     * Passes a directory and its files to another method for the files to be handled accordingly
+     * Passes a directory and its files to another method for the files to be
+     * handled accordingly
      *
      * @param string $moduleName
      * @param string $dirName
      * @param array $files
      *
      * @return void
+     *
+     * @throws \Draku\Modules\Exceptions\DirectoryHandlerNotFound
      */
     protected function handleFiles(&$moduleName, &$dirName, &$files)
     {
@@ -327,18 +347,6 @@ class Loader
     {
         if(!isset($this->explorer)) {
             $this->explorer = new Explorer($path, $fileManager);
-        }
-    }
-
-    /**
-     * Sets the namespace for the directory where the modules are located
-     *
-     * @return void
-     */
-    private function setNamespace()
-    {
-        if(!isset($this->namespace)) {
-            $this->namespace = 'Modules';
         }
     }
 }
