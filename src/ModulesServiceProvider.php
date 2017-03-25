@@ -28,9 +28,10 @@ class ModulesServiceProvider extends ServiceProvider
         $this->app->singleton('modules.loader', function(Container $app) {
             return new Loader(
                 $app['config']->get('modules'),
-                $app['files'],
-                $app['router'],
                 $app['view'],
+                $app['router'],
+                $app['files'],
+                $app['modules.explorer'],
                 $app->bootstrapPath()
             );
         });
